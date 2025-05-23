@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>本地音乐播放器</title>
+    <!-- 引入 FontAwesome 图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: #333;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.97);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            width: 90%;
+            max-width: 750px;
+            display: grid;
+            grid-template-rows: auto auto auto;
+            gap: 25px;
+        }
+        .header {
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2em;
+            color: #3a86ff;
+            text-shadow: 1px 1px 2px rgba(58, 134, 255, 0.3);
+        }
+        .header .warning {
+            color: #ff006e;
+            font-size: 0.9em;
+            margin-top: 8px;
+            font-style: italic;
+        }
+        .file-input {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border: 2px dashed #ccc;
+            transition: background 0.3s, border-color 0.3s;
+        }
+        .file-input:hover {
+            background: #eef2f7;
+            border-color: #3a86ff;
+        }
+        .file-input label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        .file-input input {
+            width: 100%;
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .player-section {
+            display: grid;
+            grid-template-rows: auto auto;
+            gap: 20px;
+        }
+        .playlist {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 15px;
+            max-height: 180px;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.05);
+            transition: background 0.3s, border-color 0.3s;
+        }
+        .playlist.dragover {
+            background: #e0e6ff;
+            border-color: #3a86ff;
+        }
+        .playlist div {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: background 0.2s, color 0.2s;
+        }
+        .playlist div:hover {
+            background-color: #e9ecef;
+            color: #3a86ff;
+        }
+        .playlist .current {
+            color: #3a86ff;
+            font-weight: bold;
+            background-color: #e0e6ff;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .controls button {
+            background: #3a86ff;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2em;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+        }
+        .controls button:hover {
+            background: #2c6dd5;
+            transform: scale(1.1);
+            box-shadow: 0 3px 10px rgba(44, 109, 213, 0.5);
+        }
+        .controls audio {
+            flex-grow: 1;
+            min-width: 250px;
+            border-radius: 30px;
+            height: 40px;
+        }
+        .lyrics {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            max-height: 320px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            font-size: 1.1em; /* 字体稍大，增加可读性 */
+            color: #2c3e50; /* 深色字体，提升对比度 */
+            line-height: 2; /* 增加行高，文字更舒展 */
+            border: 1px solid #e0e0e0;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.05);
+            text-align: center; /* 歌词居中显示 */
+        }
+        .lyrics div {
+            padding: 8px 0;
+            transition: background 0.2s, color 0.2s, transform 0.2s; /* 添加 transform 过渡效果 */
+            text-shadow: 0.5px 0.5px 1px rgba(0, 0, 0, 0.1); /* 轻微文字阴影，提升清晰度 */
+        }
+        .lyrics .current {
+            color: #6c3ba5; /* 选中歌词颜色改为深紫色，柔和又显眼 */
+            font-weight: bold;
+            background-color: #e9d5ff; /* 背景色改为浅紫色 */
+            padding: 8px 15px;
+            border-radius: 8px;
+            transform: scale(1.02); /* 轻微放大选中歌词，增加突出感 */
+            box-shadow: 0 2px 5px rgba(108, 59, 165, 0.3); /* 添加轻微阴影效果 */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>本地音乐播放器</h1>
+            <div class="warning">
+                注意：请同时选择音乐和歌词文件，浏览器安全限制无法自动加载（按住 Ctrl 或 Shift 选择多个文件）。
+            </div>
+        </div>
+        <div class="file-input">
+            <label for="files">选择音乐和歌词文件：</label>
+            <input type="file" id="files" accept="audio/*,.lrc,.txt" multiple onchange="handleFiles(this)">
+        </div>
+        <div class="player-section">
+            <div class="playlist" id="playlist">
+                暂无音乐文件，请选择文件。
+            </div>
+            <div class="controls">
+                <button onclick="playPrevious()" title="上一曲"><i class="fas fa-backward"></i></button>
+                <button onclick="playNext()" title="下一曲"><i class="fas fa-forward"></i></button>
+                <audio id="audioPlayer" controls></audio>
+            </div>
+        </div>
+        <div class="lyrics" id="lyrics">
+            请选择音乐文件和歌词文件。
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.7/jsmediatags.min.js"></script>
+    <script>
+        let audioFiles = []; // 存储音乐文件列表
+        let lyricsFiles = {}; // 存储文件名对应的歌词文件
+        let currentAudioIndex = -1; // 当前播放的音乐索引
+        let lyricsData = []; // 存储当前歌词时间和内容
+        let currentLineIndex = -1; // 当前高亮的歌词行索引
+
+        // 初始化拖放事件监听
+        function setupDragAndDrop() {
+            const playlistDiv = document.getElementById('playlist');
+
+            // 拖动进入时高亮
+            playlistDiv.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                playlistDiv.classList.add('dragover');
+            });
+
+            // 拖动离开时取消高亮
+            playlistDiv.addEventListener('dragleave', () => {
+                playlistDiv.classList.remove('dragover');
+            });
+
+            // 放下文件时处理
+            playlistDiv.addEventListener('drop', (e) => {
+                e.preventDefault();
+                playlistDiv.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleDroppedFiles(files);
+                }
+            });
+        }
+
+        // 处理拖放的文件
+        function handleDroppedFiles(files) {
+            const playlistDiv = document.getElementById('playlist');
+            let playlistHTML = '';
+
+            // 区分音乐文件和歌词文件，累积添加
+            for (let file of files) {
+                const ext = file.name.split('.').pop().toLowerCase();
+                if (['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac', 'wma'].includes(ext)) {
+                    // 检查是否已存在，避免重复添加
+                    if (!audioFiles.some(f => f.name === file.name)) {
+                        audioFiles.push(file);
+                    }
+                } else if (['lrc', 'txt'].includes(ext)) {
+                    const baseName = file.name.split('.').slice(0, -1).join('.'); // 获取文件名（不含扩展名）
+                    lyricsFiles[baseName] = file;
+                }
+            }
+
+            // 更新播放列表内容
+            if (audioFiles.length > 0) {
+                audioFiles.forEach((file, index) => {
+                    playlistHTML += `<div id="playlist-item-${index}" onclick="playAudio(${index})">${file.name}</div>`;
+                });
+                playlistDiv.innerHTML = playlistHTML;
+            } else {
+                playlistDiv.innerHTML = '暂无音乐文件，请选择文件。';
+            }
+
+            if (audioFiles.length > 0 && currentAudioIndex === -1) {
+                playAudio(0); // 如果之前没有播放过，默认播放第一首歌
+            }
+        }
+
+        // 处理通过输入框选择的文件，累积添加到播放列表
+        function handleFiles(input) {
+            const files = input.files;
+            if (files.length === 0) {
+                document.getElementById('lyrics').innerHTML = '请同时选择音乐文件和歌词文件。';
+                return;
+            }
+
+            const playlistDiv = document.getElementById('playlist');
+            let playlistHTML = '';
+
+            // 区分音乐文件和歌词文件，累积添加
+            for (let file of files) {
+                const ext = file.name.split('.').pop().toLowerCase();
+                if (['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac', 'wma'].includes(ext)) {
+                    // 检查是否已存在，避免重复添加
+                    if (!audioFiles.some(f => f.name === file.name)) {
+                        audioFiles.push(file);
+                    }
+                } else if (['lrc', 'txt'].includes(ext)) {
+                    const baseName = file.name.split('.').slice(0, -1).join('.'); // 获取文件名（不含扩展名）
+                    lyricsFiles[baseName] = file;
+                }
+            }
+
+            // 更新播放列表内容
+            if (audioFiles.length > 0) {
+                audioFiles.forEach((file, index) => {
+                    playlistHTML += `<div id="playlist-item-${index}" onclick="playAudio(${index})">${file.name}</div>`;
+                });
+                playlistDiv.innerHTML = playlistHTML;
+            } else {
+                playlistDiv.innerHTML = '暂无音乐文件，请选择文件。';
+            }
+
+            if (audioFiles.length > 0 && currentAudioIndex === -1) {
+                playAudio(0); // 如果之前没有播放过，默认播放第一首歌
+            }
+        }
+
+        // 播放指定索引的音乐
+        function playAudio(index) {
+            if (index < 0 || index >= audioFiles.length) return;
+
+            // 更新当前播放索引和高亮
+            currentAudioIndex = index;
+            updatePlaylistHighlight();
+
+            const audioFile = audioFiles[index];
+            const audio = document.getElementById('audioPlayer');
+            audio.src = URL.createObjectURL(audioFile); // 创建临时 URL 用于播放
+            audio.load();
+            audio.play();
+
+            // 监听时间更新以实现歌词滚动
+            audio.removeEventListener('timeupdate', syncLyrics); // 移除旧监听
+            audio.addEventListener('timeupdate', syncLyrics);
+            // 监听播放结束，自动播放下一曲
+            audio.removeEventListener('ended', autoPlayNext);
+            audio.addEventListener('ended', autoPlayNext);
+
+            // 优先尝试加载本地歌词文件
+            const baseName = audioFile.name.split('.').slice(0, -1).join('.');
+            const lyricsFile = lyricsFiles[baseName];
+            if (lyricsFile) {
+                loadLyricsFile(lyricsFile);
+            } else {
+                // 如果没有本地歌词文件，则尝试读取嵌入歌词
+                readEmbeddedLyrics(audioFile, () => {
+                    if (lyricsData.length === 0) {
+                        document.getElementById('lyrics').innerHTML = '未找到对应歌词文件或嵌入歌词。';
+                        lyricsData = [];
+                        currentLineIndex = -1;
+                    }
+                });
+            }
+        }
+
+        // 更新播放列表高亮
+        function updatePlaylistHighlight() {
+            const playlistDiv = document.getElementById('playlist');
+            const items = playlistDiv.getElementsByTagName('div');
+            for (let i = 0; i < items.length; i++) {
+                if (i === currentAudioIndex) {
+                    items[i].classList.add('current');
+                } else {
+                    items[i].classList.remove('current');
+                }
+            }
+        }
+
+        // 播放上一曲
+        function playPrevious() {
+            if (currentAudioIndex > 0) {
+                playAudio(currentAudioIndex - 1);
+            }
+        }
+
+        // 播放下一曲
+        function playNext() {
+            if (currentAudioIndex < audioFiles.length - 1) {
+                playAudio(currentAudioIndex + 1);
+            }
+        }
+
+        // 播放结束后自动播放下一曲
+        function autoPlayNext() {
+            playNext();
+        }
+
+        // 读取音乐文件中的嵌入歌词（添加超时机制）
+        function readEmbeddedLyrics(file, callback) {
+            const lyricsDiv = document.getElementById('lyrics');
+            lyricsDiv.innerHTML = '正在尝试读取嵌入歌词...';
+
+            // 设置超时，防止长时间卡住
+            const timeout = setTimeout(() => {
+                console.warn('读取嵌入歌词超时');
+                lyricsData = [];
+                lyricsDiv.innerHTML = '读取嵌入歌词超时，未找到歌词。';
+                callback();
+            }, 3000); // 3秒超时
+
+            jsmediatags.read(file, {
+                onSuccess: function(tag) {
+                    clearTimeout(timeout); // 成功后清除超时
+                    let lyricsText = '';
+                    // 检查是否有嵌入歌词 (USLT 或 SYLT 字段)
+                    if (tag.tags.USLT && tag.tags.USLT.data) {
+                        lyricsText = tag.tags.USLT.data.text || tag.tags.USLT.data;
+                    } else if (tag.tags.SYLT && tag.tags.SYLT.data) {
+                        lyricsText = tag.tags.SYLT.data.text || tag.tags.SYLT.data;
+                    } else if (tag.tags.lyrics) {
+                        lyricsText = tag.tags.lyrics;
+                    }
+
+                    if (lyricsText) {
+                        // 尝试解析为 LRC 格式，如果不是标准 LRC 则直接显示
+                        lyricsData = parseLrc(lyricsText);
+                        let lyricsHTML = '';
+                        if (lyricsData.length > 0) {
+                            lyricsData.forEach((item, index) => {
+                                lyricsHTML += `<div id="lyric-line-${index}">${item.text}</div>`;
+                            });
+                        } else {
+                            // 如果无法解析为 LRC，直接显示原文
+                            lyricsHTML = lyricsText.split('\n').map(line => `<div>${line}</div>`).join('');
+                            lyricsData = [];
+                        }
+                        lyricsDiv.innerHTML = lyricsHTML || '嵌入歌词内容为空';
+                        currentLineIndex = -1; // 重置当前行
+                    } else {
+                        lyricsData = [];
+                        lyricsDiv.innerHTML = '未找到嵌入歌词。';
+                    }
+                    callback();
+                },
+                onError: function(error) {
+                    clearTimeout(timeout); // 出错后清除超时
+                    console.error('读取嵌入歌词失败：', error);
+                    lyricsData = [];
+                    lyricsDiv.innerHTML = '无法读取嵌入歌词。';
+                    callback();
+                }
+            });
+        }
+
+        // 加载外部歌词文件
+        function loadLyricsFile(file) {
+            const lyricsDiv = document.getElementById('lyrics');
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                // 解析 LRC 格式歌词
+                lyricsData = parseLrc(text);
+                // 显示歌词
+                let lyricsHTML = '';
+                lyricsData.forEach((item, index) => {
+                    lyricsHTML += `<div id="lyric-line-${index}">${item.text}</div>`;
+                });
+                lyricsDiv.innerHTML = lyricsHTML || '歌词内容为空';
+                currentLineIndex = -1; // 重置当前行
+            };
+            reader.onerror = function() {
+                lyricsDiv.innerHTML = '无法读取歌词文件。';
+            };
+            reader.readAsText(file); // 读取歌词文件内容
+        }
+
+        // 解析 LRC 格式歌词
+        function parseLrc(text) {
+            const lines = text.split('\n');
+            const result = [];
+            const timeRegex = /\[(\d+):(\d+)\.(\d+)\]/; // 匹配时间格式 [mm:ss.xx]
+            lines.forEach(line => {
+                const match = line.match(timeRegex);
+                if (match) {
+                    const minutes = parseInt(match[1]);
+                    const seconds = parseInt(match[2]);
+                    const milliseconds = parseInt(match[3]);
+                    const time = minutes * 60 + seconds + milliseconds / 100; // 转换为总秒数
+                    const textContent = line.replace(timeRegex, '').trim(); // 提取歌词内容
+                    if (textContent) {
+                        result.push({ time, text: textContent });
+                    }
+                }
+            });
+            return result.sort((a, b) => a.time - b.time); // 按时间排序
+        }
+
+        // 同步歌词滚动
+        function syncLyrics() {
+            const audio = document.getElementById('audioPlayer');
+            const currentTime = audio.currentTime; // 当前播放时间（秒）
+            const lyricsDiv = document.getElementById('lyrics');
+
+            // 找到当前时间对应的歌词行
+            let newIndex = -1;
+            for (let i = 0; i < lyricsData.length; i++) {
+                if (currentTime >= lyricsData[i].time) {
+                    newIndex = i;
+                } else {
+                    break;
+                }
+            }
+
+            // 如果当前行变了，更新高亮和滚动
+            if (newIndex !== currentLineIndex && newIndex >= 0) {
+                // 取消之前的行高亮
+                if (currentLineIndex >= 0) {
+                    const prevLine = document.getElementById(`lyric-line-${currentLineIndex}`);
+                    if (prevLine) prevLine.classList.remove('current');
+                }
+                // 高亮当前行
+                const currentLine = document.getElementById(`lyric-line-${newIndex}`);
+                if (currentLine) {
+                    currentLine.classList.add('current');
+                    // 滚动到当前行，居中显示
+                    currentLine.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                currentLineIndex = newIndex;
+            }
+        }
+
+        // 页面加载时初始化拖放功能
+        window.addEventListener('load', setupDragAndDrop);
+    </script>
+</body>
+</html>
