@@ -201,7 +201,7 @@
         let currentLineIndex = -1; // 当前高亮的歌词行索引
         let onlineSongs = []; // 存储在线歌曲列表
         let currentOnlineIndex = -1; // 当前播放的在线歌曲索引
-        let onlineSongOffset = 0; // 飙升榜拉取的偏移量
+        let onlineSongOffset = 0; // 私人雷达拉取的偏移量
         let isOnlineMode = false; // 是否为在线播放模式
         let playedSongIds = new Set(); // 存储已播放或已拉取的歌曲ID，用于去重
 
@@ -342,16 +342,16 @@
             }
         }
 
-        // 获取网易云音乐飙升榜歌曲，每次拉取20首，确保不重复
+        // 获取网易云音乐私人雷达歌曲，每次拉取20首，确保不重复
         async function fetchSoaringListSongs() {
             const playlistDiv = document.getElementById('playlist');
-            playlistDiv.innerHTML = '正在获取网易云飙升榜歌曲...';
-            console.log('尝试获取飙升榜歌曲，偏移量:', onlineSongOffset);
+            playlistDiv.innerHTML = '正在获取网易云私人雷达歌曲...';
+            console.log('尝试获取私人雷达歌曲，偏移量:', onlineSongOffset);
             try {
-                // 飙升榜ID为19723756
-                const songsResponse = await fetch(`https://163-api.4444567.xyz/playlist/detail?id=19723756&limit=20&offset=${onlineSongOffset}`);
+                // 私人雷达ID为3136952023
+                const songsResponse = await fetch(`https://163-api.4444567.xyz/playlist/detail?id=3136952023&limit=20&offset=${onlineSongOffset}`);
                 const songsData = await songsResponse.json();
-                console.log('飙升榜歌曲响应数据:', songsData);
+                console.log('私人雷达歌曲响应数据:', songsData);
                 if (songsData.playlist && songsData.playlist.tracks && songsData.playlist.tracks.length > 0) {
                     // 过滤掉已播放或已拉取的歌曲
                     const newSongs = songsData.playlist.tracks.filter(song => !playedSongIds.has(song.id));
@@ -371,24 +371,24 @@
                         playlistHTML += `<div id="online-item-${index}" onclick="playOnlineSong(${index})">${song.name} - ${song.ar[0].name}</div>`;
                     });
                     playlistDiv.innerHTML = playlistHTML || '暂无歌曲。';
-                    console.log('飙升榜歌曲获取成功，歌曲数量:', onlineSongs.length);
+                    console.log('私人雷达歌曲获取成功，歌曲数量:', onlineSongs.length);
                     return true;
                 } else {
-                    playlistDiv.innerHTML = '未能获取飙升榜歌曲。';
-                    console.error('未能获取飙升榜歌曲，数据为空。');
+                    playlistDiv.innerHTML = '未能获取私人雷达歌曲。';
+                    console.error('未能获取私人雷达歌曲，数据为空。');
                     // 如果没有更多歌曲，重置偏移量，从头开始（避免无限循环）
                     onlineSongOffset = 0;
                     playedSongIds.clear(); // 清空已播放记录，允许重复
                     return false;
                 }
             } catch (error) {
-                console.error('获取飙升榜歌曲失败:', error);
-                playlistDiv.innerHTML = '获取飙升榜歌曲失败，请检查网络或 API 服务。';
+                console.error('获取私人雷达歌曲失败:', error);
+                playlistDiv.innerHTML = '获取私人雷达歌曲失败，请检查网络或 API 服务。';
                 return false;
             }
         }
 
-        // 随机播放网易云音乐（从飙升榜），每次点击更新20首新歌曲
+        // 随机播放网易云音乐（从私人雷达），每次点击更新20首新歌曲
         async function playRandomOnline() {
             isOnlineMode = true;
             onlineSongs = []; // 清空当前歌曲列表
